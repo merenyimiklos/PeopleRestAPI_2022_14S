@@ -18,6 +18,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.gson.Gson;
 
@@ -35,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout linearLayoutPersonForm;
     private List<Person> people = new ArrayList<>();
     private String url = "https://retoolapi.dev/gEAFWW/people";
+    private SwipeRefreshLayout swiperRefreshLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,26 +56,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        buttonBack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                linearLayoutPersonForm.setVisibility(View.GONE);
-                buttonNew.setVisibility(View.VISIBLE);
-            }
+        buttonBack.setOnClickListener(view -> {
+            linearLayoutPersonForm.setVisibility(View.GONE);
+            buttonNew.setVisibility(View.VISIBLE);
+            urlapAlaphelyzetbe();
         });
 
-        buttonAdd.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                emberHozzadas();
-            }
-        });
+        buttonAdd.setOnClickListener(view -> emberHozzadas());
 
         buttonEdit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 emberModositas();
             }
+        });
+
+        swiperRefreshLayout.setOnRefreshListener(() -> {
+            RequestTask task1 = new RequestTask(url, "GET");
+            task1.execute();
+            swiperRefreshLayout.setRefreshing(false); //EZ FONTOS
         });
     }
 
@@ -94,12 +95,22 @@ public class MainActivity extends AppCompatActivity {
 
         listViewAdatok = findViewById(R.id.listViewAdatok);
         listViewAdatok.setAdapter(new PersonAdapter());
+
+        swiperRefreshLayout = findViewById(R.id.swiperRefreshLayout);
     }
 
     private void emberHozzadas() {
         String name = editTextName.getText().toString();
         String ageText = editTextAge.getText().toString();
         String email = editTextEmail.getText().toString();
+
+        boolean valid = validacio();
+
+        if (valid){
+            Toast.makeText(this,
+                    "Minden mezőt ki kell tölteni", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         int age = Integer.parseInt(ageText);
         Person person = new Person(0,name,email,age);
@@ -117,11 +128,28 @@ public class MainActivity extends AppCompatActivity {
 
         int age = Integer.parseInt(ageText);
         int id = Integer.parseInt(idText);
+
+        boolean valid = validacio();
+
+        if (valid){
+            Toast.makeText(this,
+                    "Minden mezőt ki kell tölteni", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Person person = new Person(id,name,email,age);
         Gson jsonConverter = new Gson();
         RequestTask task = new RequestTask(url+"/"+id, "PUT",
                 jsonConverter.toJson(person));
         task.execute();
+    }
+
+    private boolean validacio() {
+        if (editTextEmail.getText().toString().isEmpty() ||
+                editTextAge.getText().toString().isEmpty() || editTextName.getText().toString().isEmpty())
+            return true;
+        else
+            return false;
     }
 
     private class PersonAdapter extends ArrayAdapter<Person> {
@@ -141,29 +169,23 @@ public class MainActivity extends AppCompatActivity {
             TextView textViewTorles = view.findViewById(R.id.textViewDelete);
 
             textViewName.setText(actualPerson.getName());
-            textViewAge.setText("(" +String.valueOf(actualPerson.getAge()) + ")");
+            textViewAge.setText("(" +actualPerson.getAge() + ")");
 
-            textViewModosit.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    linearLayoutPersonForm.setVisibility(View.VISIBLE);
-                    editTextId.setText(String.valueOf(actualPerson.getId()));
-                    editTextEmail.setText(actualPerson.getEmail());
-                    editTextName.setText(actualPerson.getName());
-                    editTextAge.setText(String.valueOf(actualPerson.getAge()));
-                    buttonEdit.setVisibility(View.VISIBLE);
-                    buttonAdd.setVisibility(View.GONE);
-                    buttonNew.setVisibility(View.GONE);
-                }
+            textViewModosit.setOnClickListener(view1 -> {
+                linearLayoutPersonForm.setVisibility(View.VISIBLE);
+                editTextId.setText(String.valueOf(actualPerson.getId()));
+                editTextEmail.setText(actualPerson.getEmail());
+                editTextName.setText(actualPerson.getName());
+                editTextAge.setText(String.valueOf(actualPerson.getAge()));
+                buttonEdit.setVisibility(View.VISIBLE);
+                buttonAdd.setVisibility(View.GONE);
+                buttonNew.setVisibility(View.GONE);
             });
 
-            textViewTorles.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    RequestTask task = new RequestTask(url, "DELETE",
-                            String.valueOf(actualPerson.getId()));
-                    task.execute();
-                }
+            textViewTorles.setOnClickListener(view12 -> {
+                RequestTask task = new RequestTask(url, "DELETE",
+                        String.valueOf(actualPerson.getId()));
+                task.execute();
             });
 
             return view;
